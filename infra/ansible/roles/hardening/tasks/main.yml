@@ -1,0 +1,92 @@
+---
+- name: atualiza pacotes
+  apt:
+    update_cache: yes
+    upgrade: safe
+
+- name: instala pacotes essenciais
+  apt:
+    name:
+      - ufw
+      - fail2ban
+      - curl
+      - vim
+    state: present
+
+- name: cria usuario deploy
+  user:
+    name: deploy
+    shell: /bin/bash
+    groups: sudo,docker
+    append: yes
+    create_home: yes
+
+- name: cria diretorio .ssh do deploy
+  file:
+    path: /home/deploy/.ssh
+    state: directory
+    owner: deploy
+    group: deploy
+    mode: '0700'
+
+- name: instala chave SSH do deploy
+  authorized_key:
+    user: deploy
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+    state: present
+
+- name: desativa ssh.socket (socket activation ignora Port do sshd_config)
+  systemd:
+    name: ssh.socket
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: garante ssh.service habilitado
+  systemd:
+    name: ssh.service
+    enabled: yes
+
+- name: remove configs do cloud-init que sobrescrevem sshd
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/ssh/sshd_config.d/50-cloud-init.conf
+    - /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+
+- name: configura SSH
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+
+- name: ativa UFW
+  ufw:
+    state: enabled
+    policy: deny
+
+- name: libera portas necessarias
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - '2222'
+    - '80'
+    - '443'
+
+- name: configura fail2ban
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [sshd]
+      enabled = true
+      port = 2222
+      maxretry = 3
+      bantime = 3600
+  notify: restart fail2ban

@@ -1,0 +1,7 @@
+---
+- name: hardening da vps
+  hosts: vps
+  become: yes
+
+  roles:
+    - role: ../roles/hardening
