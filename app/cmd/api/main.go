@@ -4,14 +4,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	"github.com/CarlosZambonii/devforge/internal/crypto"
 	"github.com/CarlosZambonii/devforge/internal/handler"
 	"github.com/CarlosZambonii/devforge/internal/repository"
 	"github.com/CarlosZambonii/devforge/internal/service"
+	"github.com/CarlosZambonii/devforge/pkg/vault"
 )
 
 func main() {
-	key := []byte("12345678901234567890123456789012")
+	// busca a chave AES do Vault (nao mais hardcoded)
+	vaultClient, err := vault.NewClient()
+	if err != nil {
+		log.Fatalf("erro ao conectar no vault: %v", err)
+	}
+
+	key, err := vaultClient.GetAESKey()
+	if err != nil {
+		log.Fatalf("erro ao buscar chave AES no vault: %v", err)
+	}
 
 	aes, err := crypto.NewAESCrypto(key)
 	if err != nil {

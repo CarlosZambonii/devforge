@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//root/devforge/**)",
+      "Bash(git -C /root/devforge status)",
+      "Bash(git -C /root/devforge/app status)"
+    ]
+  }
+}
