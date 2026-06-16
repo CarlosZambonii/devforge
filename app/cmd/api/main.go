@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/CarlosZambonii/devforge/internal/crypto"
 	"github.com/CarlosZambonii/devforge/internal/handler"
@@ -29,7 +30,11 @@ func main() {
 		log.Fatalf("erro ao criar crypto: %v", err)
 	}
 
-	repo := repository.NewURLRepository("localhost:6379")
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	repo := repository.NewURLRepository(redisAddr)
 	svc := service.NewURLService(repo, aes)
 	h := handler.NewURLHandler(svc)
 
