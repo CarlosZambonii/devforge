@@ -6,14 +6,16 @@ import (
 	"net/http"
 
 	"github.com/CarlosZambonii/devforge/internal/service"
+	"github.com/CarlosZambonii/devforge/pkg/mlclient"
 )
 
 type URLHandler struct {
 	service *service.URLService
+	ml      *mlclient.Client
 }
 
-func NewURLHandler(service *service.URLService) *URLHandler {
-	return &URLHandler{service: service}
+func NewURLHandler(service *service.URLService, ml *mlclient.Client) *URLHandler {
+	return &URLHandler{service: service, ml: ml}
 }
 
 type shortenRequest struct {
@@ -21,7 +23,9 @@ type shortenRequest struct {
 }
 
 type shortenResponse struct {
-	Code string `json:"code"`
+	Code  string  `json:"code"`
+	Risk  string  `json:"risk"`
+	Score float64 `json:"score"`
 }
 
 type errorResponse struct {
@@ -41,7 +45,14 @@ func (h *URLHandler) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, shortenResponse{code})
+	// consulta o classificador de risco (degrada para "unknown" se ml-service fora)
+	risk := h.ml.Predict(context.Background(), req.URL)
+
+	writeJSON(w, http.StatusCreated, shortenResponse{
+		Code:  code,
+		Risk:  risk.Risk,
+		Score: risk.Score,
+	})
 }
 
 func (h *URLHandler) Resolve(w http.ResponseWriter, r *http.Request) {

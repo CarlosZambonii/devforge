@@ -10,6 +10,7 @@ import (
 	"github.com/CarlosZambonii/devforge/internal/handler"
 	"github.com/CarlosZambonii/devforge/internal/repository"
 	"github.com/CarlosZambonii/devforge/internal/service"
+	"github.com/CarlosZambonii/devforge/pkg/mlclient"
 	"github.com/CarlosZambonii/devforge/pkg/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
@@ -52,7 +53,12 @@ func main() {
 	}
 	repo := repository.NewURLRepository(redisAddr)
 	svc := service.NewURLService(repo, aes)
-	h := handler.NewURLHandler(svc)
+	mlURL := os.Getenv("ML_SERVICE_URL")
+	if mlURL == "" {
+		mlURL = "http://localhost:8000"
+	}
+	mlClient := mlclient.NewClient(mlURL)
+	h := handler.NewURLHandler(svc, mlClient)
 
 	mux := http.NewServeMux()
 
