@@ -15,11 +15,9 @@ spec:
       labels:
         app: api
     spec:
-      imagePullSecrets:
-        - name: acr-secret
       containers:
         - name: api
-          image: acrdevforgecarlos.azurecr.io/devforge-api:v2
+          image: caza6367/devforge-api:v2
           ports:
             - containerPort: 8080
           env:
