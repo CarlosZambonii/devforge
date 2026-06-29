@@ -64,3 +64,41 @@ jobs:
           docker tag caza6367/devforge-api:${{ github.sha }} caza6367/devforge-api:latest
           docker push caza6367/devforge-api:${{ github.sha }}
           docker push caza6367/devforge-api:latest
+
+  dast-zap:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: [build-scan-push]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Subir Redis
+        run: docker run -d --name redis -p 6379:6379 redis:alpine
+
+      - name: Subir Vault dev
+        run: |
+          docker run -d --name vault \
+            -p 8200:8200 \
+            -e 'VAULT_DEV_ROOT_TOKEN_ID=devtoken' \
+            -e 'VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200' \
+            hashicorp/vault
+          sleep 5
+          docker exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN=devtoken vault \
+            vault kv put secret/devforge aes_key='12345678901234567890123456789012'
+
+      - name: Subir API
+        run: |
+          docker run -d --name api --network host \
+            -e VAULT_ADDR=http://127.0.0.1:8200 \
+            -e VAULT_TOKEN=devtoken \
+            -e REDIS_ADDR=127.0.0.1:6379 \
+            caza6367/devforge-api:latest
+          sleep 5
+          curl -s http://localhost:8080/health
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:8080'
+          cmd_options: '-a'
+          fail_action: false
